@@ -311,6 +311,10 @@
                 <label style="font-size: 13px; font-weight: 700; color: #65676b; display: block; margin-bottom: 5px;">عدد التفاعلات:</label>
                 <input type="text" id="postReactionsInput" value="5" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px; outline: none; font-weight: 600;">
             </div>
+            <div style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px;">
+                <label style="font-size: 13px; font-weight: 700; color: #65676b; display: block; margin-bottom: 5px;">تاريخ المنشور المخصص (اختياري - حروف، أرقام، رموز مثل: منذ ساعتين، أو 2026/10/20):</label>
+                <input type="text" id="postCustomTimeInput" placeholder="اتركه فارغاً للوقت التلقائي" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px; outline: none; font-weight: 600;">
+            </div>
             <div style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px; display: flex; align-items: center; gap: 10px;">
                 <input type="checkbox" id="postLockedCheckbox" style="width: 20px; height: 20px; cursor: pointer;">
                 <label for="postLockedCheckbox" style="font-size: 14px; font-weight: 700; color: #333; cursor: pointer;">قفل المنشور (إخفاء عن الزوار ولا يراه سوى الأدمن)</label>
@@ -853,7 +857,7 @@
 
         window.addEventListener('popstate', function () {
             let modals = [
-                { id: 'createPostScreen', cleanup: () => { document.getElementById('postText').value = ""; document.getElementById('filePreview').innerText = ""; window.tempFiles = []; window.currentEditingPostId = null; } },
+                { id: 'createPostScreen', cleanup: () => { document.getElementById('postText').value = ""; document.getElementById('postCustomTimeInput').value = ""; document.getElementById('filePreview').innerText = ""; window.tempFiles = []; window.currentEditingPostId = null; } },
                 { id: 'imageViewerModal', cleanup: () => {} },
                 { id: 'viewersModal', cleanup: () => {} },
                 { id: 'storyViewerModal', cleanup: () => { let vid = document.getElementById('storyMediaVid'); if(vid) vid.pause(); } },
@@ -1260,7 +1264,10 @@
                 let avatarHtml = author.avatar && author.avatar.trim() !== "" ? `<img src="${author.avatar}" class="post-avatar">` : `<div class="post-avatar" style="background:#e4e6eb; display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-user" style="font-size:18px; color:#8a8d91;"></i></div>`;
                 let lockedClass = p.isLocked ? ' locked-post' : '';
                 let lockedBadge = p.isLocked ? `<span style="background: #ff4500; color: #fff; font-size: 11px; padding: 2px 6px; border-radius: 4px; margin-right: 6px; font-weight: 700;"><i class="fa-solid fa-lock"></i> مقفل (مخفي عن الزوار)</span>` : '';
-                let postTime = `${getTimeAgo(p.id)} · <i class='fa-solid fa-globe globe-icon'></i>`;
+                
+                let timeDisplay = p.customTime && p.customTime.trim() !== "" ? p.customTime : getTimeAgo(p.id);
+                let postTime = `${timeDisplay} · <i class='fa-solid fa-globe globe-icon'></i>`;
+                
                 let postReactionsHtml = renderReactionsHtml(p.reactions, p.reactionType);
                 let postCommentsCount = p.commentsCount ? p.commentsCount : "0 تعليقات";
                 let textHtml = p.text && p.text.trim() !== "" ? `<div class="post-body"><div>${linkify(p.text)}</div></div>` : '';
@@ -1318,6 +1325,7 @@
             let textEl = document.getElementById('postText');
             let reactionsEl = document.getElementById('postReactionsInput');
             let reactionTypeSelect = document.getElementById('postReactionTypeSelect');
+            let customTimeInput = document.getElementById('postCustomTimeInput');
             let lockedCheckbox = document.getElementById('postLockedCheckbox');
             let filePreviewEl = document.getElementById('filePreview');
             let clearMediaBtn = document.getElementById('clearPostMediaBtn');
@@ -1336,10 +1344,10 @@
                 let extractedCount = post && post.reactions !== undefined ? String(post.reactions).replace(/[^\d]/g, '') : "";
                 reactionsEl.value = extractedCount ? extractedCount : "5";
                 reactionTypeSelect.value = post && post.reactionType ? post.reactionType : "😆";
+                customTimeInput.value = post && post.customTime ? post.customTime : "";
                 lockedCheckbox.checked = post ? !!post.isLocked : false;
                 if (post && post.authorId) authorSelect.value = post.authorId;
                 
-                // حل المشكلة: جلب الملفات والصور الموجودة في المنشور بشكل سليم عند فتح التعديل
                 if (post && post.mediaFiles && post.mediaFiles.length > 0) {
                     window.tempFiles = [...post.mediaFiles];
                 } else if (post && post.mediaUrl) {
@@ -1359,6 +1367,7 @@
                 textEl.value = "";
                 reactionsEl.value = "5";
                 reactionTypeSelect.value = "😆";
+                customTimeInput.value = "";
                 lockedCheckbox.checked = false;
                 filePreviewEl.innerText = "";
                 clearMediaBtn.style.display = 'none';
@@ -1421,6 +1430,7 @@
             let text = document.getElementById('postText').value;
             let reactions = document.getElementById('postReactionsInput').value;
             let reactionType = document.getElementById('postReactionTypeSelect').value;
+            let customTime = document.getElementById('postCustomTimeInput').value.trim();
             let isLocked = document.getElementById('postLockedCheckbox').checked;
             let authorId = parseInt(document.getElementById('postAuthorSelect').value);
             
@@ -1435,6 +1445,7 @@
                     post.text = text;
                     post.reactions = finalReactionsVal;
                     post.reactionType = reactionType;
+                    post.customTime = customTime;
                     post.isLocked = isLocked;
                     post.authorId = authorId;
                     post.mediaFiles = [...window.tempFiles];
@@ -1448,6 +1459,7 @@
                     mediaFiles: [...window.tempFiles],
                     reactions: finalReactionsVal,
                     reactionType: reactionType,
+                    customTime: customTime,
                     isLocked: isLocked,
                     commentsCount: "0 تعليقات",
                     viewers: [],
